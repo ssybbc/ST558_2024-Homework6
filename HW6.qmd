@@ -1,0 +1,189 @@
+---
+title: "Homework 6 for ST558_2024"
+format: html
+editor: visual
+---
+
+# Task 1: Conceptual Questions
+
+### 1. What is the purpose of the lapply() function? What is the equivalent purr function?
+
+lapply() function is to apply a function to a list. For example
+
+```{r}
+my_list <- list (cars, iris)
+lapply (my_list, FUN = colnames)
+```
+
+It will list all the variable in the two data frame at the same time, sometimes would be quite handy.
+
+In the purrr package, the equivalent function would be map().
+
+### 2. Code question.
+
+Suppose we have a list called my_list. Each element of the list is a numeric data frame (all columns are numeric). We want use lapply() to run the code cor(numeric_matrix, method = "kendall")on each element of the list. Write code to do this below!
+
+```{r}
+my_list <- list (data.frame (x=1:3, y=2:4), data.frame(z=3:5, a=4:6))
+lapply (my_list, FUN = cor, method = "kendall")
+```
+
+The code above could give the correct response. So the key is for the lapply() function, if you have additional arguments with the function called in "FUN=", just directly put the arguments after the "FUN=" argument.
+
+### 3. What are the two advantages of using purrr function instead of the BaseR apply family?
+
+1.  Basically purrr functions provides similar syntax for function calling, always the list "X =" as the first argument. But apply family lacks this consistency, probably because those functions were built progressively over time.
+
+2.  purrr has some helper function easing the use. For example, map(mylist,2) directly outputs the second elements in all the vectors. Meanwhile you have to call lapply(mylist,function(x),x\[\[2\]\])
+
+### 4. What is a side-effect function
+
+Side-effect function is the function does not change the direct output of the function but changes other data along the way that are not directly printed out.
+
+### 5. Why can you name a variable *sd* in a function and not cause any issues with the sd function?
+
+Because when calling sd the variable, we usually use "sd", but when using as a function, we normally use "sd()". Although the variable and the function has the same name, you won't confuse one for another.
+
+# Task 2- Writing R Functions.
+
+## 1. Enable NA removal.
+
+When doing machine learning, a common metric used to evaluate predictions is called RMSE. For a given set of response y1,...,yn (variable of interest that we want to predict) and a set of corresponding predictions for those observations, \^{y1},..., \^{yn}. The RMSE is defined as: (1/n \* \sum (yi-\^{yi}) ). Write a basic function (call it getRMSE()) that takes in a vector of responses and a vector of predictions outputs the RMSE.
+
+```{r}
+getRMSE <- function (response, prediction) {
+  meansquare <- mean ((response - prediction)^2)
+  RMSE <- sqrt (meansquare)
+  return (RMSE)
+}
+
+getRMSE (c(1,2,3,4), c(1,3,2,4))
+getRMSE (c(1,2,3,4), c(1,NA,2,4))
+```
+
+Now the function need to enable the remove of "NA" from the calculation.
+
+```{r}
+getRMSE <- function (response, prediction,...) {
+  meansquare <- mean ((response - prediction)^2,...)
+  RMSE <- sqrt (meansquare)
+  return (RMSE)
+}
+
+getRMSE (c(1,2,3,4), c(1,3,2,4))
+getRMSE (c(1,2,3,4), c(1,NA,2,4), na.rm = TRUE)
+```
+
+## 2. Further testing the unnamed function
+
+Run the following code to create some response values and predictions
+
+```{r}
+set.seed(10)
+n <- 100
+x <- runif(n)
+resp <- 3 + 10 * x + rnorm(n)
+pred <- predict(lm(resp ~ x), data.frame(x))
+
+getRMSE (resp, pred)
+```
+
+How about replacing two of the response with missing values?
+
+```{r}
+getRMSE (c(resp[1:8],NA_real_,NA_real_), pred, na.rm = TRUE)
+getRMSE (c(resp[1:8],NA_real_,NA_real_), pred)
+```
+
+It is clear without the argument "na.rm = TRUE", getRMSE () would give NA value if there is NA value in the data it takes in.
+
+## 3. The getMAE() function
+
+Write a function to get the MAE value following the specification of the getRMSE() function
+
+```{r}
+getMAE <- function (response, prediction,...) {
+  distance <- abs (response - prediction)
+  MAE <- mean (distance, ...)
+  return (MAE)
+}
+
+getMAE (c(1,2,3,4), c(1,3,2,4))
+getMAE (c(1,2,3,4), c(1,NA,2,4), na.rm = TRUE)
+```
+
+## 4. Testing the getMAE() function
+
+```{r}
+set.seed(10)
+n <- 100
+x <- runif(n)
+resp <- 3 + 10 * x + rnorm(n)
+pred <- predict(lm(resp ~ x), data.frame(x))
+getMAE(resp, pred)
+```
+
+Similar, we wanted to test how about replacing two of the response with missing values.
+
+```{r}
+getMAE (c(resp[1:8],NA_real_,NA_real_), pred, na.rm = TRUE) 
+getMAE (c(resp[1:8],NA_real_,NA_real_), pred)
+```
+
+Similarly to the function getRMSE(), it is clear without the argument "na.rm = TRUE", getRMSE () would give NA value if there is NA value in the data it takes in. Because the default value of the argument "na.rm" in the function mean() is FALSE, so if no specification of the unnamed function, our function would not tolerate the NA value and gives NA as a result.
+
+## 5. The wrapper function 
+
+We want to create a "wrapper" function, that could get **either** or **both** metrics returned with a single function call. The function should check two **numeric vectors** have been passed.
+
+```{r}
+predstats <- function (response, prediction, RMSE = TRUE, MAE = TRUE, ...) 
+  {
+  if ((is.numeric (response)) && (is.numeric(prediction))) {
+    if ((isTRUE (RMSE)) && (isTRUE (MAE))) {
+      return (data.frame (RMSE = getRMSE (response, prediction, ...),
+                     MAE = getMAE (response, prediction, ...)))
+    }
+    else if ((isTRUE(RMSE)) && (MAE != TRUE)) {
+      return (data.frame (RMSE = getRMSE (response, prediction, ...)))
+    }
+    else if ((RMSE != TRUE) && (isTRUE(MAE))) {
+      return (data.frame (MAE = getMAE (response, prediction, ...)))
+    }}
+  else {print ("you did not enter the right data type!")}
+}
+
+predstats (c(1,2,3,4), c(1,3,2,4))
+predstats (c(1,2,3,4), c(1,NA,2,4), na.rm = TRUE)
+predstats (as.character(c(1,2,3,4)), c(1,3,2,4))
+predstats (c(1,2,3,4), c(1,3,2,4), RMSE = FALSE)
+```
+
+The above code showed the function **predstats** requires input of numeric vectors and the behavior could be changed by using a character string.
+
+## 6. Testing the predstats () wrapper function
+
+```{r}
+set.seed(10)
+n <- 100
+x <- runif(n)
+resp <- 3 + 10 * x + rnorm(n)
+pred <- predict(lm(resp ~ x), data.frame(x))
+
+predstats(resp, pred, RMSE = FALSE)
+predstats(resp, pred, MAE = FALSE)
+predstats(resp, pred)
+```
+
+Now replace two of the response elements with missing values
+
+```{r}
+predstats (c(resp[1:8],NA_real_,NA_real_), pred)
+```
+
+Finally test the predstats () wrapper function into something weird, that is non-vector type
+
+```{r}
+predstats(iris, pred)
+predstats (iris[,2], iris[,1])
+```
