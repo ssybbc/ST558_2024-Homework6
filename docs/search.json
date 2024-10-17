@@ -1,0 +1,51 @@
+[
+  {
+    "objectID": "HW6.html",
+    "href": "HW6.html",
+    "title": "Homework 6 for ST558_2024",
+    "section": "",
+    "text": "lapply() function is to apply a function to a list. For example\n\nmy_list &lt;- list (cars, iris)\nlapply (my_list, FUN = colnames)\n\n[[1]]\n[1] \"speed\" \"dist\" \n\n[[2]]\n[1] \"Sepal.Length\" \"Sepal.Width\"  \"Petal.Length\" \"Petal.Width\"  \"Species\"     \n\n\nIt will list all the variable in the two data frame at the same time, sometimes would be quite handy.\nIn the purrr package, the equivalent function would be map().\n\n\n\nSuppose we have a list called my_list. Each element of the list is a numeric data frame (all columns are numeric). We want use lapply() to run the code cor(numeric_matrix, method = “kendall”)on each element of the list. Write code to do this below!\n\nmy_list &lt;- list (data.frame (x=1:3, y=2:4), data.frame(z=3:5, a=4:6))\nlapply (my_list, FUN = cor, method = \"kendall\")\n\n[[1]]\n  x y\nx 1 1\ny 1 1\n\n[[2]]\n  z a\nz 1 1\na 1 1\n\n\nThe code above could give the correct response. So the key is for the lapply() function, if you have additional arguments with the function called in “FUN=”, just directly put the arguments after the “FUN=” argument.\n\n\n\n\nBasically purrr functions provides similar syntax for function calling, always the list “X =” as the first argument. But apply family lacks this consistency, probably because those functions were built progressively over time.\npurrr has some helper function easing the use. For example, map(mylist,2) directly outputs the second elements in all the vectors. Meanwhile you have to call lapply(mylist,function(x),x[[2]])\n\n\n\n\nSide-effect function is the function does not change the direct output of the function but changes other data along the way that are not directly printed out.\n\n\n\nBecause when calling sd the variable, we usually use “sd”, but when using as a function, we normally use “sd()”. Although the variable and the function has the same name, you won’t confuse one for another."
+  },
+  {
+    "objectID": "HW6.html#enable-na-removal.",
+    "href": "HW6.html#enable-na-removal.",
+    "title": "Homework 6 for ST558_2024",
+    "section": "1. Enable NA removal.",
+    "text": "1. Enable NA removal.\nWhen doing machine learning, a common metric used to evaluate predictions is called RMSE. For a given set of response y1,…,yn (variable of interest that we want to predict) and a set of corresponding predictions for those observations, ^{y1},…, ^{yn}. The RMSE is defined as: (1/n * (yi-^{yi}) ). Write a basic function (call it getRMSE()) that takes in a vector of responses and a vector of predictions outputs the RMSE.\n\ngetRMSE &lt;- function (response, prediction) {\n  meansquare &lt;- mean ((response - prediction)^2)\n  RMSE &lt;- sqrt (meansquare)\n  return (RMSE)\n}\n\ngetRMSE (c(1,2,3,4), c(1,3,2,4))\n\n[1] 0.7071068\n\ngetRMSE (c(1,2,3,4), c(1,NA,2,4))\n\n[1] NA\n\n\nNow the function need to enable the remove of “NA” from the calculation.\n\ngetRMSE &lt;- function (response, prediction,...) {\n  meansquare &lt;- mean ((response - prediction)^2,...)\n  RMSE &lt;- sqrt (meansquare)\n  return (RMSE)\n}\n\ngetRMSE (c(1,2,3,4), c(1,3,2,4))\n\n[1] 0.7071068\n\ngetRMSE (c(1,2,3,4), c(1,NA,2,4), na.rm = TRUE)\n\n[1] 0.5773503"
+  },
+  {
+    "objectID": "HW6.html#further-testing-the-unnamed-function",
+    "href": "HW6.html#further-testing-the-unnamed-function",
+    "title": "Homework 6 for ST558_2024",
+    "section": "2. Further testing the unnamed function",
+    "text": "2. Further testing the unnamed function\nRun the following code to create some response values and predictions\n\nset.seed(10)\nn &lt;- 100\nx &lt;- runif(n)\nresp &lt;- 3 + 10 * x + rnorm(n)\npred &lt;- predict(lm(resp ~ x), data.frame(x))\n\ngetRMSE (resp, pred)\n\n[1] 0.9581677\n\n\nHow about replacing two of the response with missing values?\n\ngetRMSE (c(resp[1:8],NA_real_,NA_real_), pred, na.rm = TRUE)\n\n[1] 3.318965\n\ngetRMSE (c(resp[1:8],NA_real_,NA_real_), pred)\n\n[1] NA\n\n\nIt is clear without the argument “na.rm = TRUE”, getRMSE () would give NA value if there is NA value in the data it takes in."
+  },
+  {
+    "objectID": "HW6.html#the-getmae-function",
+    "href": "HW6.html#the-getmae-function",
+    "title": "Homework 6 for ST558_2024",
+    "section": "3. The getMAE() function",
+    "text": "3. The getMAE() function\nWrite a function to get the MAE value following the specification of the getRMSE() function\n\ngetMAE &lt;- function (response, prediction,...) {\n  distance &lt;- abs (response - prediction)\n  MAE &lt;- mean (distance, ...)\n  return (MAE)\n}\n\ngetMAE (c(1,2,3,4), c(1,3,2,4))\n\n[1] 0.5\n\ngetMAE (c(1,2,3,4), c(1,NA,2,4), na.rm = TRUE)\n\n[1] 0.3333333"
+  },
+  {
+    "objectID": "HW6.html#testing-the-getmae-function",
+    "href": "HW6.html#testing-the-getmae-function",
+    "title": "Homework 6 for ST558_2024",
+    "section": "4. Testing the getMAE() function",
+    "text": "4. Testing the getMAE() function\n\nset.seed(10)\nn &lt;- 100\nx &lt;- runif(n)\nresp &lt;- 3 + 10 * x + rnorm(n)\npred &lt;- predict(lm(resp ~ x), data.frame(x))\ngetMAE(resp, pred)\n\n[1] 0.8155776\n\n\nSimilar, we wanted to test how about replacing two of the response with missing values.\n\ngetMAE (c(resp[1:8],NA_real_,NA_real_), pred, na.rm = TRUE) \n\n[1] 2.717284\n\ngetMAE (c(resp[1:8],NA_real_,NA_real_), pred)\n\n[1] NA\n\n\nSimilarly to the function getRMSE(), it is clear without the argument “na.rm = TRUE”, getRMSE () would give NA value if there is NA value in the data it takes in. Because the default value of the argument “na.rm” in the function mean() is FALSE, so if no specification of the unnamed function, our function would not tolerate the NA value and gives NA as a result."
+  },
+  {
+    "objectID": "HW6.html#the-wrapper-function",
+    "href": "HW6.html#the-wrapper-function",
+    "title": "Homework 6 for ST558_2024",
+    "section": "5. The wrapper function",
+    "text": "5. The wrapper function\nWe want to create a “wrapper” function, that could get either or both metrics returned with a single function call. The function should check two numeric vectors have been passed.\n\npredstats &lt;- function (response, prediction, RMSE = TRUE, MAE = TRUE, ...) \n  {\n  if ((is.numeric (response)) && (is.numeric(prediction))) {\n    if ((isTRUE (RMSE)) && (isTRUE (MAE))) {\n      return (data.frame (RMSE = getRMSE (response, prediction, ...),\n                     MAE = getMAE (response, prediction, ...)))\n    }\n    else if ((isTRUE(RMSE)) && (MAE != TRUE)) {\n      return (data.frame (RMSE = getRMSE (response, prediction, ...)))\n    }\n    else if ((RMSE != TRUE) && (isTRUE(MAE))) {\n      return (data.frame (MAE = getMAE (response, prediction, ...)))\n    }}\n  else {print (\"you did not enter the right data type!\")}\n}\n\npredstats (c(1,2,3,4), c(1,3,2,4))\n\n       RMSE MAE\n1 0.7071068 0.5\n\npredstats (c(1,2,3,4), c(1,NA,2,4), na.rm = TRUE)\n\n       RMSE       MAE\n1 0.5773503 0.3333333\n\npredstats (as.character(c(1,2,3,4)), c(1,3,2,4))\n\n[1] \"you did not enter the right data type!\"\n\npredstats (c(1,2,3,4), c(1,3,2,4), RMSE = FALSE)\n\n  MAE\n1 0.5\n\n\nThe above code showed the function predstats requires input of numeric vectors and the behavior could be changed by using a character string."
+  },
+  {
+    "objectID": "HW6.html#testing-the-predstats-wrapper-function",
+    "href": "HW6.html#testing-the-predstats-wrapper-function",
+    "title": "Homework 6 for ST558_2024",
+    "section": "6. Testing the predstats () wrapper function",
+    "text": "6. Testing the predstats () wrapper function\n\nset.seed(10)\nn &lt;- 100\nx &lt;- runif(n)\nresp &lt;- 3 + 10 * x + rnorm(n)\npred &lt;- predict(lm(resp ~ x), data.frame(x))\n\npredstats(resp, pred, RMSE = FALSE)\n\n        MAE\n1 0.8155776\n\npredstats(resp, pred, MAE = FALSE)\n\n       RMSE\n1 0.9581677\n\npredstats(resp, pred)\n\n       RMSE       MAE\n1 0.9581677 0.8155776\n\n\nNow replace two of the response elements with missing values\n\npredstats (c(resp[1:8],NA_real_,NA_real_), pred)\n\n  RMSE MAE\n1   NA  NA\n\n\nFinally test the predstats () wrapper function into something weird, that is non-vector type\n\npredstats(iris, pred)\n\n[1] \"you did not enter the right data type!\"\n\npredstats (iris[,2], iris[,1])\n\n      RMSE   MAE\n1 2.952276 2.786"
+  }
+]
