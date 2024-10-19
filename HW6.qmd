@@ -187,3 +187,116 @@ Finally test the predstats () wrapper function into something weird, that is non
 predstats(iris, pred)
 predstats (iris[,2], iris[,1])
 ```
+
+# Task 3 - Quering an API and a Tidy-Style Function
+
+In this task, we want to visit news API through the httr::GET function and return information about a topic that I am interested in.
+
+```{r}
+library (jsonlite)
+library (httr)
+
+base_url_trial <- "https://newsapi.org/v2/top-headlines?country=us&category=business&apiKey=b989c18c07a6498fb8925b724e0a1acf"
+query_params <- list(
+  get = "source.id",   # Fields to retrieve
+  key = "b989c18c07a6498fb8925b724e0a1acf"  # API key
+)
+newsapi <- httr::GET(url = base_url_trial, query = query_params)
+newsapi_parsed <- fromJSON(rawToChar(newsapi$content))
+str (newsapi_parsed)
+```
+
+So the API query is successful and basically returns a list of 3 elements.
+
+The first and second elements are about the status and number of results, but the third elements named "article" is what really interests us. It is a data frame comprising of 8 variables and 20 observations. The 8 variables are source, author, title, description, url, url to image, pulishedAt and content. Now according to the instruction I could use pluck() to grab the **articles** elements.
+
+```{r}
+library (purrr)
+library (dplyr)
+newsapi_articles <- newsapi_parsed |> pluck ("articles") |> as_tibble()
+head (newsapi_articles)
+str (newsapi_articles[,1])
+```
+
+That's a great way to grab some short news! We do notice that the first column is a list-column that comprises of two different list, \$id and \$name. Now we want to pack all the commands into one single function, in which it is possible to search for the title of the news, specify a time period to search from and an API key.
+
+In order to search for the input of title, I decided to try a new function that I have never used before: *Stringr::str_detect*
+
+```{r}
+library (stringr)
+```
+
+For the API key, we could snuggle it in the **query_params** argument of the **GET()** function. The search for date function is more trickier. Let's make a function without the date function first.
+
+```{r}
+grabsomenews_beta <- function (srctitle, apikey = "b989c18c07a6498fb8925b724e0a1acf") {
+  base_url_trial <- "https://newsapi.org/v2/top-headlines?country=us&category=business"
+  query_params <- list(
+  apikey = apikey # In the newAPI, only apikey is need, "get=" is not a necessary function
+)
+newsapi <- httr::GET(url = base_url_trial, query = query_params)
+newsapi_articles <- fromJSON(rawToChar(newsapi$content)) |> pluck ("articles") |> as_tibble() |> filter (str_detect(title,srctitle))
+
+return (newsapi_articles)
+}
+grabsomenews_beta(srctitle = "stock")
+
+```
+
+So this one works. Here I set up the apikey's default value so we do not have to enter it all the time. Let's see the format in the variable *publishedAt*
+
+```{r}
+grabsomenews_beta (srctitle = "stock") |> select (publishedAt)
+```
+
+In order to parse the date, we could use the **substr** function and specifically asking to get the initial 10 characters.
+
+```{r}
+grabsomenews_beta (srctitle = "stock") |> select (publishedAt) |> mutate (date = substr (publishedAt,1,10), time = substr (publishedAt, 12,19))
+```
+
+Now I want to test whether we could directly compare the date
+
+```{r}
+grabsomenews_beta (srctitle = "stock") |> select (publishedAt) |> mutate (date = substr (publishedAt,1,10), time = substr (publishedAt, 12,19)) |> filter (date > "2024-10-16")
+```
+
+It was very successful! So now we could built this into the main function
+
+```{r}
+grabsomenews <- function (srctitle, since_when, apikey = "b989c18c07a6498fb8925b724e0a1acf") {
+  base_url_trial <- "https://newsapi.org/v2/top-headlines?country=us&category=business"
+  query_params <- list(
+  apikey = apikey # In the newAPI, only apikey is need, "get=" is not a necessary function
+)
+newsapi <- httr::GET(url = base_url_trial, query = query_params)
+newsapi_articles <- fromJSON(rawToChar(newsapi$content)) |> pluck ("articles") |> as_tibble() |> filter (str_detect(title,srctitle)) |> mutate (date = substr (publishedAt, 1, 10), time = substr (publishedAt, 12, 19)) |> filter (date > since_when)
+
+return (newsapi_articles)
+}
+grabsomenews(srctitle = "stock", since_when = "2024-10-14")
+```
+
+Now we have this function, we could easily summarize the name of source for each article. First grab some data twice!
+
+```{r}
+stocknews <- grabsomenews(srctitle = "stock", since_when = "2024-10-14")
+pharmnews <- grabsomenews(srctitle = "pharm", since_when = "2024-10-14")
+```
+
+Now for the stocknews, I would like to summarize the name of source for each article
+
+```{r}
+library (tidyverse)
+stocknews |> group_by(source$name) |> summarise(count = n())
+```
+
+Since source is a column list, we could use \$ to specify which list to look at. Now we look at the lubridate package and pay special attention to the "PARSE date-times" section, then turn the **publishedAt** column into a date column. Although we already sort of did so, but it's good to learn a new way.
+
+```{r}
+library (lubridate)
+stocknews_new <- stocknews |> mutate (date_lubridate = ymd_hms (publishedAt)) |> select (-date, -time)
+stocknews_new
+pharmnews_new <- pharmnews |> mutate (date_lubridate = ymd_hms (publishedAt)) |> select (-date, -time)
+pharmnews_new
+```
